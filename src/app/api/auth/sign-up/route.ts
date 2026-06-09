@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             data: {
                 username,
                 email,
-                password: hashedPassword
+                password: hashedPassword,
             }
         });
     return NextResponse.json({
