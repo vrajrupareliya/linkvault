@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,19 +16,50 @@ export default function SignInPage() {
     setLoading(true);
 
     const form = new FormData(e.currentTarget);
+    const username = form.get("username") as string;
+    const email    = form.get("email")    as string;
+    const password = form.get("password") as string;
+    const confirm  = form.get("confirm")  as string;
 
-    const res = await signIn("credentials", {
-      email:    form.get("email"),
-      password: form.get("password"),
+    if (password !== confirm) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+
+    // 1. Register the user
+    const res = await fetch("/api/auth/sign-up", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ username, email, password }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Auto sign-in after successful registration
+    const signInRes = await signIn("credentials", {
+      email,
+      password,
       redirect: false,
     });
 
-    if (res?.error) {
-      setError("Invalid email or password");
-      setLoading(false);
+    if (signInRes?.error) {
+      setError("Account created but sign-in failed. Please sign in manually.");
+      router.push("/sign-in");
     } else {
       router.push("/dashboard");
-      router.refresh();
     }
   }
 
@@ -36,16 +67,20 @@ export default function SignInPage() {
     <div className="page">
       <div className="card">
 
-        {/* Brand */}
+        {/* Logo / brand mark */}
         <div className="brand">
           <div className="brand-icon" aria-hidden="true">
-            <i className="ti ti-link" />
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M3 10C3 6.13 6.13 3 10 3s7 3.13 7 7-3.13 7-7 7-7-3.13-7-7Z" fill="currentColor" opacity=".15"/>
+              <path d="M10 6v4l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 3.34A7 7 0 1 0 16.66 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
           </div>
           <span className="brand-name">LinkVault</span>
         </div>
 
-        <h1 className="heading">Welcome back</h1>
-        <p className="subheading">Sign in to your account to continue.</p>
+        <h1 className="heading">Create your account</h1>
+        <p className="subheading">Start shortening links and tracking clicks.</p>
 
         {/* Google OAuth */}
         <button
@@ -53,7 +88,7 @@ export default function SignInPage() {
           className="google-btn"
           onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
         >
-          <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
             <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
             <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
@@ -66,8 +101,21 @@ export default function SignInPage() {
           <span>or</span>
         </div>
 
-        {/* Form */}
+        {/* Sign-up form */}
         <form onSubmit={handleSubmit} noValidate>
+
+          <div className="field">
+            <label htmlFor="username" className="field-label">Username</label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="Jon Doe"
+              className="field-input"
+              autoComplete="username"
+              required
+            />
+          </div>
 
           <div className="field">
             <label htmlFor="email" className="field-label">Email</label>
@@ -75,7 +123,7 @@ export default function SignInPage() {
               id="email"
               name="email"
               type="email"
-              placeholder="alice@example.com"
+              placeholder="jondoe@example.com"
               className="field-input"
               autoComplete="email"
               required
@@ -83,19 +131,28 @@ export default function SignInPage() {
           </div>
 
           <div className="field">
-            <div className="field-row">
-              <label htmlFor="password" className="field-label">Password</label>
-              <Link href="/forgot-password" className="forgot-link">
-                Forgot password?
-              </Link>
-            </div>
+            <label htmlFor="password" className="field-label">Password</label>
             <input
               id="password"
               name="password"
               type="password"
-              placeholder="Your password"
+              placeholder="Min. 8 characters"
               className="field-input"
-              autoComplete="current-password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="confirm" className="field-label">Confirm password</label>
+            <input
+              id="confirm"
+              name="confirm"
+              type="password"
+              placeholder="Repeat your password"
+              className="field-input"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -103,8 +160,7 @@ export default function SignInPage() {
           {error && (
             <div className="error" role="alert">
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-                <path d="M7.5 1a6.5 6.5 0 1 0 0 13A6.5 6.5 0 0 0 7.5 1ZM7.5 4.5v4M7.5 10.5h.01"
-                  stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M7.5 1a6.5 6.5 0 1 0 0 13A6.5 6.5 0 0 0 7.5 1ZM7.5 4.5v4M7.5 10.5h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               {error}
             </div>
@@ -119,20 +175,18 @@ export default function SignInPage() {
             {loading ? (
               <>
                 <span className="spinner" aria-hidden="true" />
-                Signing in…
+                Creating account…
               </>
             ) : (
-              "Sign in"
+              "Create account"
             )}
           </button>
-
         </form>
 
         <p className="footer-text">
-          Don&apos;t have an account?{" "}
-          <Link href="/sign-up" className="link">Create one</Link>
+          Already have an account?{" "}
+          <Link href="/sign-in" className="link">Sign in</Link>
         </p>
-
       </div>
 
       <style>{`
@@ -174,7 +228,6 @@ export default function SignInPage() {
           align-items: center;
           justify-content: center;
           color: #818cf8;
-          font-size: 16px;
         }
         .brand-name {
           font-size: 15px;
@@ -197,7 +250,7 @@ export default function SignInPage() {
           margin-bottom: 24px;
         }
 
-        /* Google */
+        /* Google button */
         .google-btn {
           width: 100%;
           display: flex;
@@ -225,6 +278,8 @@ export default function SignInPage() {
           align-items: center;
           gap: 12px;
           margin: 20px 0;
+          color: #3f3f46;
+          font-size: 12px;
         }
         .divider::before,
         .divider::after {
@@ -233,28 +288,17 @@ export default function SignInPage() {
           height: 1px;
           background: #27272a;
         }
-        .divider span { font-size: 12px; color: #52525b; }
+        .divider span { color: #52525b; }
 
         /* Fields */
         .field { margin-bottom: 14px; }
-        .field-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 6px;
-        }
         .field-label {
           display: block;
           font-size: 13px;
           font-weight: 500;
           color: #a1a1aa;
+          margin-bottom: 6px;
         }
-        .forgot-link {
-          font-size: 12px;
-          color: #818cf8;
-          text-decoration: none;
-        }
-        .forgot-link:hover { text-decoration: underline; }
         .field-input {
           width: 100%;
           padding: 10px 13px;
@@ -334,6 +378,7 @@ export default function SignInPage() {
         }
         .link:hover { text-decoration: underline; }
 
+        /* Responsive */
         @media (max-width: 440px) {
           .card { padding: 28px 20px 24px; }
           .heading { font-size: 20px; }

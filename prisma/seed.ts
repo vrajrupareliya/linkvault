@@ -1,3 +1,5 @@
+// This script is for seeding your database with initial data. Only for Testing purposes. 
+
 import "dotenv/config";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -16,14 +18,16 @@ async function main() {
 
   const alice = await prisma.user.create({
     data: {
-      name:     "Alice Johnson",
-      email:    "alice@gmail.com",
+      username:     "Alice Johnson",
+      email:    "alice@example.com",
       isActive: true,
+      password: "password123",
+      
     },
   });
 
 
-  console.log("Created user:", alice.name);
+  console.log("Created user:", alice.username);
 
   const aliceSummerCampaign = await prisma.campaign.create({
     data: {
