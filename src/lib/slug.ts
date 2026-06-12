@@ -4,7 +4,7 @@ const RESERVED = new Set([
   "dashboard", "api", "sign-in", "sign-up",
   "logout", "login", "register", "settings",
   "account", "profile", "admin", "home",
-  "links", "campaigns", "analytics", "upgrade",
+  "links", "campaigns", "campaign", "analytics", "upgrade",
   "pricing", "about", "contact", "help",
   "terms", "privacy", "404", "500", "support", 
   "blog", "docs", "developers", "status", 
@@ -56,11 +56,11 @@ export function validateSlug(slug: string): {
 
 // 3. check if a slug is available in database
 export async function isSlugAvailable(slug: string): Promise<boolean> {
-    const exstingSlug = await prisma.link.findUnique({
+    const existingSlug = await prisma.link.findUnique({
         where: { slug },
         select: { id: true }
     })
-    return exstingSlug == null;
+    return existingSlug == null;
 }
 
 //4. generate a unique slug 
