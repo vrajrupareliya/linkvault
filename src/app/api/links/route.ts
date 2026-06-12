@@ -4,9 +4,42 @@ import { NextResponse, NextRequest } from "next/server";
 import { generateUniqueSlug, validateSlug, isSlugAvailable } from "@/lib/slug";
 import { prisma } from "@/db/prisma";
 import { createLinkSchema } from "@/lib/validations/link";
-import { tuple, ZodError } from "zod";
-import { error } from "console";
+import { ZodError } from "zod";
 
+export async function GET(request: NextRequest){
+    const session = await auth();
+    if (!session?.user?._id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const serchParams = new URL(request.url).searchParams;
+    const page = Math.max(1, Number(serchParams.get("page") || 1));
+    const limit = Math.min(50, Number(serchParams.get("limit") || 10));
+
+    const [links, total] = await Promise.all([
+        prisma.link.findMany({
+            where: { userId: session.user._id },
+            include: {
+                _count: { select: { clicks: true }},
+                campaign: { select: { id: true,name: true } },
+            },
+            orderBy: {createdAt: "desc"},
+            skip: (page - 1) * limit,
+            take: limit,
+        }),
+        prisma.link.count({ where: { userId: session.user._id } }),
+    ]);
+
+    return NextResponse.json({
+        links,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    });
+}
 
 export async function POST(request: NextRequest) {
     const session = await auth();
