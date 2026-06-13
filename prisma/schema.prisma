@@ -37,6 +37,8 @@ model Link {
   campaign   Campaign? @relation(fields: [campaignId], references: [id])
   clicks     Click[]
   createdAt  DateTime  @default(now())
+  expiresAt DateTime?
+  isActive  Boolean  @default(true)
 
   @@index([userId])
 }
